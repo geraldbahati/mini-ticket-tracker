@@ -1,0 +1,25 @@
+{
+  "name": "@mini-ticket-tracker/api",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./*": "./src/*.ts"
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "check-types": "tsc -b"
+  },
+  "dependencies": {
+    "@mini-ticket-tracker/auth": "workspace:*",
+    "@mini-ticket-tracker/db": "workspace:*",
+    "@orpc/client": "catalog:",
+    "@orpc/openapi": "catalog:",
+    "@orpc/server": "catalog:",
+    "@orpc/zod": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@mini-ticket-tracker/config": "workspace:*",
+    "typescript": "catalog:"
+  }
+}

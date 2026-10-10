@@ -1,0 +1,24 @@
+{
+  "$schema": "https://ui.shadcn.com/schema.json",
+  "style": "base-lyra",
+  "rsc": false,
+  "tsx": true,
+  "tailwind": {
+    "config": "",
+    "css": "src/styles/globals.css",
+    "baseColor": "neutral",
+    "cssVariables": true,
+    "prefix": ""
+  },
+  "iconLibrary": "lucide",
+  "aliases": {
+    "components": "@mini-ticket-tracker/ui/components",
+    "utils": "@mini-ticket-tracker/ui/lib/utils",
+    "hooks": "@mini-ticket-tracker/ui/hooks",
+    "lib": "@mini-ticket-tracker/ui/lib",
+    "ui": "@mini-ticket-tracker/ui/components"
+  },
+  "menuColor": "default",
+  "menuAccent": "subtle",
+  "registries": {}
+}

@@ -1,0 +1,3 @@
+{
+  "extends": "@mini-ticket-tracker/config/tsconfig.base.json"
+}
