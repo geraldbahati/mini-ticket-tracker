@@ -42,6 +42,10 @@
     },
     "db:down": {
       "cache": false
+    },
+    "test": {
+      "dependsOn": ["^check-types"],
+      "cache": false
     }
   },
   "globalEnv": [
@@ -51,6 +55,7 @@
     "CORS_ORIGIN",
     "DATABASE_URL",
     "NODE_ENV",
+    "TEST_DATABASE_URL",
     "VERCEL",
     "VERCEL_ENV",
     "VERCEL_PROJECT_PRODUCTION_URL",
