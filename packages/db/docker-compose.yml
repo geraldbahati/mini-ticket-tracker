@@ -1,0 +1,24 @@
+name: mini-ticket-tracker
+
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: mini-ticket-tracker-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: mini_ticket_tracker
+    ports:
+      # 3307 on the host so it doesn't clash with a natively installed MySQL
+      - "${MYSQL_PORT:-3307}:3306"
+    volumes:
+      - mini_ticket_tracker_mysql_data:/var/lib/mysql
+      - ./docker/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-ppassword"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+volumes:
+  mini_ticket_tracker_mysql_data:

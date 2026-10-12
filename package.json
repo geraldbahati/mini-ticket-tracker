@@ -38,6 +38,9 @@
     "db:studio": "turbo run db:studio -F @mini-ticket-tracker/db --",
     "db:generate": "turbo run db:generate -F @mini-ticket-tracker/db --",
     "db:migrate": "turbo run db:migrate -F @mini-ticket-tracker/db --",
+    "db:start": "turbo run db:start -F @mini-ticket-tracker/db --",
+    "db:stop": "turbo run db:stop -F @mini-ticket-tracker/db --",
+    "db:down": "turbo run db:down -F @mini-ticket-tracker/db --",
     "env:generate": "varlock codegen --path ./apps/web/ && varlock codegen --path ./apps/server/ && varlock codegen --path ./packages/db/",
     "postinstall": "varlock codegen --path ./apps/web/ && varlock codegen --path ./apps/server/ && varlock codegen --path ./packages/db/",
     "auth:generate": "cd apps/server && bun run auth:generate"
