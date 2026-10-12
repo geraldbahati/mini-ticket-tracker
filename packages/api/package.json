@@ -16,10 +16,12 @@
     "@orpc/openapi": "catalog:",
     "@orpc/server": "catalog:",
     "@orpc/zod": "catalog:",
-    "zod": "catalog:"
+    "zod": "catalog:",
+    "drizzle-orm": "catalog:"
   },
   "devDependencies": {
     "@mini-ticket-tracker/config": "workspace:*",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "@types/bun": "catalog:"
   }
 }
