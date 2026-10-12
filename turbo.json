@@ -43,6 +43,9 @@
     "db:down": {
       "cache": false
     },
+    "db:seed": {
+      "cache": false
+    },
     "test": {
       "dependsOn": ["^check-types"],
       "cache": false
