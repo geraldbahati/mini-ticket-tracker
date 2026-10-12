@@ -1,113 +1,144 @@
-# mini-ticket-tracker
+# Mini Ticket Tracker
 
-This project was created with [Better-T-Stack](https://github.com/AmanVarshney01/create-better-t-stack), a modern TypeScript stack that combines React, TanStack Router, Express, ORPC, and more.
+A small support-ticket tracker: a REST API (Express + oRPC), a MySQL database (Drizzle ORM) and a
+single-page React UI to list, filter, create and update tickets.
 
-## Features
+## Quick start
 
-- **TypeScript** - For type safety and improved developer experience
-- **TanStack Router** - File-based routing with full type safety
-- **TailwindCSS** - Utility-first CSS for rapid UI development
-- **Shared UI package** - shadcn/ui primitives live in `packages/ui`
-- **Express** - Fast, unopinionated web framework
-- **oRPC** - End-to-end type-safe APIs with OpenAPI integration
-- **Bun** - Runtime environment
-- **Drizzle** - TypeScript-first ORM
-- **MySQL** - Database engine
-- **Authentication** - Better-Auth
-- **Turborepo** - Optimized monorepo build system
-
-## Getting Started
-
-First, install the dependencies:
+**Prerequisites:** [Bun](https://bun.sh) 1.3+ and Docker. Ports 3000 (API), 3001 (web) and
+3307 (MySQL) must be free.
 
 ```bash
 bun install
-```
 
-## Database Setup
+# Environment (defaults work with the Docker database below)
+cp apps/server/.env.example apps/server/.env
+cp apps/web/.env.example apps/web/.env
 
-This project uses MySQL with Drizzle ORM.
-
-1. Make sure you have a MySQL database set up.
-2. Update your `apps/server/.env` file with your MySQL connection details.
-
-3. Apply the schema to your database:
-
-```bash
+# Database: MySQL 8.4 in Docker on host port 3307, then schema + 30 sample tickets
+bun run db:start
 bun run db:push
-```
+bun run db:seed
 
-Then, run the development server:
-
-```bash
+# API on http://localhost:3000, web app on http://localhost:3001
 bun run dev
 ```
 
-Open [http://localhost:3001](http://localhost:3001) in your browser to see the web application.
-The API is running at [http://localhost:3000](http://localhost:3000).
+Open **http://localhost:3001/tickets**. Interactive API docs are at **http://localhost:3000/docs**
+(OpenAPI spec at `/docs/spec.json`).
 
-## UI Customization
+Stop the database with `bun run db:stop` (or `bun run db:down` to remove the container; data stays
+in a Docker volume). If you already run MySQL on 3307, set `MYSQL_PORT` and update `DATABASE_URL`.
 
-React web apps in this stack share shadcn/ui primitives through `packages/ui`.
+## API
 
-- Change design tokens and global styles in `packages/ui/src/styles/globals.css`
-- Update shared primitives in `packages/ui/src/components/*`
-- Adjust shadcn aliases or style config in `packages/ui/components.json` and `apps/web/components.json`
+All endpoints are public and accept/return JSON.
 
-### Add more shared components
+| Method  | Path             | Description                                                                 |
+| ------- | ---------------- | --------------------------------------------------------------------------- |
+| `POST`  | `/tickets`       | Create a ticket → `201`                                                     |
+| `GET`   | `/tickets`       | List tickets, newest first. `?status=`, `?page=` (default 1), `?limit=` (default 20, max 100) |
+| `PATCH` | `/tickets/:id`   | Update `status` and/or `priority` → `404` if the id is unknown              |
+| `GET`   | `/tickets/stats` | Count of tickets grouped by status                                          |
 
-Run this from the project root to add more primitives to the shared UI package:
+Invalid input returns `400` with the validation issues.
 
 ```bash
-npx shadcn@latest add accordion dialog popover sheet table -c packages/ui
+curl -X POST localhost:3000/tickets -H 'content-type: application/json' \
+  -d '{"title":"Login broken","description":"500 on submit","priority":"high"}'
+# 201 {"id":"293334a1-…","title":"Login broken","description":"500 on submit",
+#      "status":"open","priority":"high","createdAt":"…","updatedAt":"…"}
+
+curl 'localhost:3000/tickets?status=open&page=2&limit=5'
+# {"data":[…],"pagination":{"page":2,"limit":5,"total":11,"totalPages":3}}
+
+curl -X PATCH localhost:3000/tickets/<id> -H 'content-type: application/json' \
+  -d '{"status":"closed"}'
+
+curl localhost:3000/tickets/stats
+# {"open":10,"in_progress":10,"closed":10,"total":30}
 ```
 
-Import shared components like this:
+### Ticket model
 
-```tsx
-import { Button } from "@mini-ticket-tracker/ui/components/button";
+| Field         | Type      | Notes                                                |
+| ------------- | --------- | ---------------------------------------------------- |
+| `id`          | UUID      | Primary key, generated on create                     |
+| `title`       | string    | Required, 1–255 chars (trimmed)                      |
+| `description` | string    | Optional, up to 5000 chars                           |
+| `status`      | enum      | `open` \| `in_progress` \| `closed` (default `open`) |
+| `priority`    | enum      | `low` \| `medium` \| `high` (default `medium`)       |
+| `createdAt`   | timestamp | Set by the database on creation                      |
+| `updatedAt`   | timestamp | Updated on every change                              |
+
+## Tests
+
+```bash
+bun run db:start   # tests use a separate mini_ticket_tracker_test database in the same container
+bun run test
 ```
 
-### Add app-specific blocks
+- `schemas/ticket.test.ts`: validation rules (no database needed)
+- `routers/tickets.test.ts`: each procedure against MySQL (create, filter, pagination, update, 404, stats)
+- `routers/tickets.http.test.ts`: real HTTP requests through the REST handler (paths, query strings, `201`/`400`/`404`)
 
-If you want to add app-specific blocks instead of shared primitives, run the shadcn CLI from `apps/web`.
+The tests apply the committed migrations and empty the `ticket` table before each test. Set
+`TEST_DATABASE_URL` to use another database. After changing the schema, run
+`bun run db:generate` so the tests get the new migration.
 
-## Environment Configuration
+## Decisions & Tradeoffs
 
-Each app owns its environment schema in `.env.schema`. Varlock generates `src/env.ts` during installation; run `bun run env:generate` after changing a schema. Commit schemas, and keep secrets in ignored env files or your deployment platform.
+I started from the Better-T-Stack generator (Express, oRPC, Drizzle with MySQL, React) so my time
+went into the tickets feature rather than setup. It also brought auth and a monorepo layout this
+task doesn't need... I left those alone. Each endpoint is written once as an oRPC procedure, which
+serves the REST routes from the spec and gives the React app a typed client, so the same Zod rules
+check both the API and the create form. Ticket ids are UUIDs generated before the insert, because
+MySQL has no `RETURNING` to give back the new row. Pagination is offset-based since the spec asks
+for `?page=&limit=`. That's fine at this size, but deep pages get slow, and with real data I'd
+switch to cursor pagination and a `(status, created_at)` index. After an update the UI just
+refetches the list and the stats... the server decides which tickets match a filter, so I didn't
+want the client guessing. Tests run against a real MySQL in Docker, not mocks, since most of the
+logic is SQL. I skipped auth on the ticket endpoints and UI tests, and `PATCH` has no conflict
+check, so if two people edit the same ticket the last save wins. Next I'd add auth with assignees.
 
-Import the generated `ENV` accessor in application code. Shared database and auth packages receive configuration or initialized clients from the application. See [Varlock's monorepo guide](https://varlock.dev/guides/monorepos/).
+**Assumptions**
 
-Bun's automatic env loading is disabled in `bunfig.toml`; the framework integration or server bootstrap loads Varlock. Node deployments must include Varlock and its dependencies alongside the app schema.
+- Endpoints are public: the spec doesn't mention users.
+- New tickets default to `open` / `medium`. Status and priority may also be set on create.
+- `PATCH` only changes `status` and/or `priority` and must include at least one of them.
+- Pages are 1-based. A page past the end returns `200` with an empty list (the client has
+  `total` / `totalPages`).
+- Stats always include all three statuses (zeros included) plus a `total`.
 
-Run standalone Node/Bun tools that use Varlock from the owning app directory so they load that app's schema and env files. `env:generate` only generates TypeScript files; it does not initialize environment values in a subsequent command.
-
-## Project Structure
+## Project structure
 
 ```
-mini-ticket-tracker/
-├── apps/
-│   ├── web/         # Frontend application (React + TanStack Router)
-│   └── server/      # Backend API (Express, ORPC)
-├── packages/
-│   ├── ui/          # Shared shadcn/ui components and styles
-│   ├── api/         # API layer / business logic
-│   ├── auth/        # Authentication configuration & logic
-│   └── db/          # Database schema & queries
+apps/
+  server/   Express app: mounts the REST handler, the RPC handler (/rpc) and auth
+  web/      React + TanStack Router/Query UI (src/routes/tickets.tsx, src/components/tickets/)
+packages/
+  api/      Ticket schemas (Zod), service (queries) and router (endpoints) + tests
+  db/       Drizzle schema, migrations, seed script, Docker Compose
+  ui/       Shared shadcn/ui components
+  auth/     Better-Auth config (from the scaffold; not used by tickets)
 ```
 
-## Available Scripts
+Request flow: `router (validation) → service (Drizzle query) → MySQL`. The web app calls the same
+procedures over `/rpc`, so request and response types are checked at compile time.
 
-- `bun run dev`: Start all applications in development mode
-- `bun run build`: Build all applications
-- `bun run dev:web`: Start only the web application
-- `bun run dev:server`: Start only the server
-- `bun run check-types`: Check TypeScript types across all apps
-- `bun run db:push`: Push schema changes to database
-- `bun run db:generate`: Generate database client/types
-- `bun run db:migrate`: Run database migrations
-- `bun run db:studio`: Open database studio UI
+## Scripts
 
-## Better Auth Schema Generation
+| Script | Description |
+| --- | --- |
+| `bun run dev` | Start the API and web app |
+| `bun run test` | Run the test suite (needs `db:start`) |
+| `bun run check-types` | Type-check all packages |
+| `bun run build` | Build all apps |
+| `bun run db:start` / `db:stop` / `db:down` | Manage the Docker MySQL container |
+| `bun run db:push` | Apply the schema to the database |
+| `bun run db:generate` | Generate a migration after a schema change |
+| `bun run db:seed` | Replace all tickets with 30 sample tickets (refuses to run in production) |
+| `bun run db:studio` | Open Drizzle Studio |
 
-After changing auth plugins or schema options, run `bun run auth:generate` from the project root. The script runs the Better Auth CLI through `varlock run` from the owning app directory, loading the auth instance from `src/services.ts`. Review the schema changes, then use your ORM's migration workflow to apply them.
+Environment variables are validated at startup by [Varlock](https://varlock.dev) against each
+app's `.env.schema`.
