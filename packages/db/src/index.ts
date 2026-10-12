@@ -1,15 +1,16 @@
-import { drizzle } from "drizzle-orm/mysql2";
+import { type MySql2Database, drizzle } from "drizzle-orm/mysql2";
+import { type Pool, createPool } from "mysql2";
 
 import type { DatabaseConfig } from "./config";
 import { relations } from "./relations";
 
-export function createDb(env: DatabaseConfig) {
+export type Database = MySql2Database<typeof relations> & { $client: Pool };
+
+export function createDb(env: DatabaseConfig): Database {
+  // Drizzle writes to `client.config`, which mysql2's PromisePool doesn't have, so give it the
+  // callback pool and let drizzle wrap it.
   return drizzle({
-    connection: {
-      uri: env.DATABASE_URL,
-    },
+    client: createPool({ uri: env.DATABASE_URL }),
     relations,
   });
 }
-
-export type Database = ReturnType<typeof createDb>;
