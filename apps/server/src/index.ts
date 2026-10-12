@@ -17,7 +17,7 @@ const app = express();
 app.use(
   cors({
     origin: ENV.CORS_ORIGIN,
-    methods: ["GET", "POST", "OPTIONS"],
+    methods: ["GET", "POST", "PATCH", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true,
   }),
@@ -36,6 +36,11 @@ const apiHandler = new OpenAPIHandler(appRouter, {
   plugins: [
     new OpenAPIReferencePlugin({
       schemaConverters: [new ZodToJsonSchemaConverter()],
+      docsPath: "/docs",
+      specPath: "/docs/spec.json",
+      specGenerateOptions: {
+        info: { title: "Mini Ticket Tracker API", version: "1.0.0" },
+      },
     }),
   ],
   interceptors: [
@@ -46,16 +51,15 @@ const apiHandler = new OpenAPIHandler(appRouter, {
 });
 
 app.use(async (req, res, next) => {
+  const context = await createContext({ req });
+
   const rpcResult = await rpcHandler.handle(req, res, {
     prefix: "/rpc",
-    context: await createContext({ req }),
+    context,
   });
   if (rpcResult.matched) return;
 
-  const apiResult = await apiHandler.handle(req, res, {
-    prefix: "/api-reference",
-    context: await createContext({ req }),
-  });
+  const apiResult = await apiHandler.handle(req, res, { context });
   if (apiResult.matched) return;
 
   next();
