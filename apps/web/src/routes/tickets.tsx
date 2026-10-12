@@ -5,6 +5,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 import z from "zod";
 
+import CreateTicketDialog from "@/components/tickets/create-ticket-dialog";
 import TicketFilters from "@/components/tickets/ticket-filters";
 import TicketStats from "@/components/tickets/ticket-stats";
 import TicketTable from "@/components/tickets/ticket-table";
@@ -43,6 +44,7 @@ function TicketsPage() {
           <h1 className="text-xl font-semibold">Tickets</h1>
           <p className="text-muted-foreground text-sm">Track issues by status and priority.</p>
         </div>
+        <CreateTicketDialog />
       </div>
 
       <TicketStats />
